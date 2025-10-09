@@ -201,45 +201,43 @@
         }
 
         // Пример отправки через Google Forms (бесплатный и простой способ)
-        function sendToGoogleForm(data) {
-            // Создайте Google Form и получите ID формы
-            const formId = 'YOUR_GOOGLE_FORM_ID_HERE'; // Замените на ваш ID
-            
-            const formData = new FormData();
-            formData.append('entry.123456789', data.rating); // Замените на реальные ID полей
-            formData.append('entry.987654321', data.latitude || 'N/A');
-            formData.append('entry.555555555', data.longitude || 'N/A');
-            formData.append('entry.444444444', data.timestamp);
-            formData.append('entry.333333333', data.userAgent);
-            
-            fetch(`https://docs.google.com/forms/d/e/${formId}/formResponse`, {
-                method: 'POST',
-                body: formData,
-                mode: 'no-cors'
-            }).catch(error => {
-                console.log('Данные отправлены в Google Forms');
-            });
-        }
-
-        // Альтернатива: отправка на ваш сервер
-        function sendToServer(data) {
-            fetch('/api/save-rating', { // Замените на ваш endpoint
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(result => {
-                console.log('Данные успешно сохранены на сервере:', result);
-            })
-            .catch(error => {
-                console.error('Ошибка при сохранении на сервер:', error);
-                // Сохраняем в localStorage как запасной вариант
-                saveToLocalStorage(data);
-            });
-        }
+function sendToGoogleForm(data) {
+    const formId = '1ehxb4mVaN_3VvrOT7LfsVoZIbkXw8qwElpDWS-Y41jA';
+    
+    const formData = new FormData();
+    
+    // Все данные в одном поле (универсальный подход)
+    const allData = `
+⭐ ОЦЕНКА: ${data.rating}
+📍 ГЕОЛОКАЦИЯ: ${data.latitude || 'N/A'}, ${data.longitude || 'N/A'}
+🕐 ВРЕМЯ: ${data.timestamp}
+🌐 БРАУЗЕР: ${navigator.userAgent.substring(0, 50)}...
+💻 ЭКРАН: ${data.screenResolution}
+🌍 ПОЯС: ${data.timezone}
+🗣️ ЯЗЫК: ${data.language}
+    `.trim();
+    
+    // Пробуем самые частые ID для одного поля
+    const commonIds = [
+        'entry.123456789', 'entry.386541035', 'entry.1864653038',
+        'entry.2046091299', 'entry.1571665538', 'entry.691203390'
+    ];
+    
+    // Отправляем во все возможные ID
+    commonIds.forEach(id => {
+        formData.append(id, allData);
+    });
+    
+    fetch(`https://docs.google.com/forms/d/e/${formId}/formResponse`, {
+        method: 'POST',
+        body: formData,
+        mode: 'no-cors'
+    }).then(() => {
+        console.log('✅ Данные отправлены в новую форму!');
+    }).catch(error => {
+        console.log('❌ Ошибка отправки');
+    });
+}
 
         // Запасной вариант: сохранение в localStorage
         function saveToLocalStorage(data) {
@@ -266,3 +264,4 @@
 </body>
 
 </html>
+
