@@ -82,542 +82,571 @@
         <p>Присоединяйтесь к нашему сообществу! 🐕🐈🐤</p>
     </footer>
 
-    <!-- ПОЛНЫЙ JavaScript код с Formspree -->
-<script>
-    // Система оценки звездами с фиксацией
-    const stars = document.querySelectorAll('.star');
-    const ratingText = document.getElementById('ratingText');
-    const ratingResult = document.getElementById('ratingResult');
-    let currentRating = 0;
-    let ratingSubmitted = false;
+    <!-- ПОЛНЫЙ JavaScript код -->
+    <script>
+        // Система оценки звездами с фиксацией
+        const stars = document.querySelectorAll('.star');
+        const ratingText = document.getElementById('ratingText');
+        const ratingResult = document.getElementById('ratingResult');
+        let currentRating = 0;
+        let ratingSubmitted = false;
 
-    // Проверяем, есть ли уже оценка при загрузке страницы
-    function checkExistingRating() {
-        const existingRating = localStorage.getItem('petshub_user_rating');
-        if (existingRating) {
-            currentRating = parseInt(existingRating);
-            ratingSubmitted = true;
-            updateStars(currentRating);
-            disableStars();
-            ratingText.textContent = `Спасибо! Ваша оценка: ${currentRating} ⭐ уже учтена!`;
-            ratingText.style.color = '#28a745';
+        // Проверяем, есть ли уже оценка при загрузке страницы
+        function checkExistingRating() {
+            const existingRating = localStorage.getItem('petshub_user_rating');
+            if (existingRating) {
+                currentRating = parseInt(existingRating);
+                ratingSubmitted = true;
+                updateStars(currentRating);
+                disableStars();
+                ratingText.textContent = `Спасибо! Ваша оценка: ${currentRating} ⭐ уже учтена!`;
+                ratingText.style.color = '#28a745';
+            }
         }
-    }
 
-    // Отключаем звезды после выбора
-    function disableStars() {
+        // Отключаем звезды после выбора
+        function disableStars() {
+            stars.forEach(star => {
+                star.style.cursor = 'default';
+                star.style.pointerEvents = 'none';
+            });
+            document.querySelector('.stars').style.cursor = 'default';
+        }
+
+        // Включаем звезды (если нужно сбросить)
+        function enableStars() {
+            stars.forEach(star => {
+                star.style.cursor = 'pointer';
+                star.style.pointerEvents = 'auto';
+            });
+            document.querySelector('.stars').style.cursor = 'pointer';
+        }
+
+        // Обработчики для звезд
         stars.forEach(star => {
-            star.style.cursor = 'default';
-            star.style.pointerEvents = 'none';
-        });
-        document.querySelector('.stars').style.cursor = 'default';
-    }
+            star.addEventListener('click', function() {
+                if (ratingSubmitted) {
+                    showRatingResult('Вы уже поставили оценку! Спасибо! 💝', true);
+                    return;
+                }
+                
+                currentRating = parseInt(this.getAttribute('data-value'));
+                ratingSubmitted = true;
+                
+                // Сохраняем факт оценки в localStorage
+                localStorage.setItem('petshub_user_rating', currentRating);
+                localStorage.setItem('petshub_rating_timestamp', new Date().toISOString());
+                
+                updateStars(currentRating);
+                disableStars();
+                sendRatingWithLocation(currentRating);
+            });
 
-    // Включаем звезды (если нужно сбросить)
-    function enableStars() {
-        stars.forEach(star => {
-            star.style.cursor = 'pointer';
-            star.style.pointerEvents = 'auto';
+            star.addEventListener('mouseover', function() {
+                if (!ratingSubmitted) {
+                    const hoverRating = parseInt(this.getAttribute('data-value'));
+                    updateStars(hoverRating, false);
+                }
+            });
         });
-        document.querySelector('.stars').style.cursor = 'pointer';
-    }
 
-    // Обработчики для звезд
-    stars.forEach(star => {
-        star.addEventListener('click', function() {
-            if (ratingSubmitted) {
-                showRatingResult('Вы уже поставили оценку! Спасибо! 💝', true);
+        // Обработчик для ухода мыши с блока звезд
+        document.querySelector('.stars').addEventListener('mouseleave', function() {
+            if (!ratingSubmitted) {
+                updateStars(currentRating, true);
+            }
+        });
+
+        // Функция обновления внешнего вида звезд
+        function updateStars(rating, isPermanent = true) {
+            stars.forEach(star => {
+                const starValue = parseInt(star.getAttribute('data-value'));
+                if (starValue <= rating) {
+                    star.classList.add('active');
+                } else {
+                    star.classList.remove('active');
+                }
+            });
+
+            if (isPermanent && !ratingSubmitted) {
+                const messages = [
+                    "Наведите на звезды и выберите оценку! ✨",
+                    "Плохо 😞 - Спасибо за честность!",
+                    "Так себе 😐 - Постараемся лучше!", 
+                    "Нормально 🙂 - Рады что понравилось!",
+                    "Хорошо 😊 - Очень приятно!",
+                    "Отлично! 🤩 - Вы делаете нас лучше!"
+                ];
+                ratingText.textContent = messages[rating] || messages[0];
+                ratingText.style.color = 'white';
+            }
+        }
+
+        // Функция отправки оценки с определением по IP
+        function sendRatingWithLocation(rating) {
+            ratingResult.innerHTML = '<div class="rating-info">⌛ Отправляем вашу оценку...</div>';
+            ratingResult.className = 'rating-result show';
+
+            // Собираем базовые данные
+            const timestamp = new Date().toISOString();
+            const userAgent = navigator.userAgent;
+            const screenResolution = `${screen.width}x${screen.height}`;
+            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const language = navigator.language;
+            const platform = navigator.platform;
+            const userId = generateUserId();
+
+            // Получаем местоположение по IP
+            getLocationByIP()
+                .then(ipLocation => {
+                    // Сохраняем данные с гео по IP
+                    saveRatingData({
+                        rating: rating,
+                        timestamp: timestamp,
+                        userAgent: userAgent,
+                        screenResolution: screenResolution,
+                        timezone: timezone,
+                        language: language,
+                        platform: platform,
+                        pageUrl: window.location.href,
+                        userRatingId: userId,
+                        ipLocation: ipLocation,
+                        locationMethod: 'ip'
+                    });
+                    
+                    showRatingResult(`Спасибо за оценку ${rating} ⭐! Ваш отзыв очень важен для нас! 💝`, true);
+                    ratingText.textContent = `Ваша оценка: ${rating} ⭐ сохранена!`;
+                    ratingText.style.color = '#28a745';
+                })
+                .catch(error => {
+                    // Сохраняем данные без гео
+                    saveRatingData({
+                        rating: rating,
+                        timestamp: timestamp,
+                        userAgent: userAgent,
+                        screenResolution: screenResolution,
+                        timezone: timezone,
+                        language: language,
+                        platform: platform,
+                        pageUrl: window.location.href,
+                        userRatingId: userId,
+                        ipLocation: { error: 'Не удалось определить местоположение' },
+                        locationMethod: 'failed'
+                    });
+                    
+                    showRatingResult(`Спасибо за оценку ${rating} ⭐!`, true);
+                    ratingText.textContent = `Ваша оценка: ${rating} ⭐ сохранена!`;
+                    ratingText.style.color = '#28a745';
+                });
+        }
+
+        // Функция определения местоположения по IP
+        function getLocationByIP() {
+            return new Promise((resolve, reject) => {
+                // Используем надежный IP-API
+                const ipApis = [
+                    'https://api.ipify.org?format=json',
+                    'https://ipinfo.io/json?token=test', // Бесплатный без токена
+                    'https://api.db-ip.com/v2/free/self'
+                ];
+
+                let currentApiIndex = 0;
+
+                function tryNextApi() {
+                    if (currentApiIndex >= ipApis.length) {
+                        reject(new Error('Все API недоступны'));
+                        return;
+                    }
+
+                    const apiUrl = ipApis[currentApiIndex];
+                    
+                    fetch(apiUrl, {
+                        method: 'GET',
+                        mode: 'cors',
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error('API не доступен');
+                        return response.json();
+                    })
+                    .then(data => {
+                        let locationData = {};
+                        
+                        // Обрабатываем разные форматы ответов
+                        if (apiUrl.includes('ipify.org')) {
+                            locationData = {
+                                ip: data.ip,
+                                country: 'Определяется по IP',
+                                city: 'Определяется по IP'
+                            };
+                        } else if (apiUrl.includes('ipinfo.io')) {
+                            const [lat, lon] = data.loc ? data.loc.split(',') : [null, null];
+                            locationData = {
+                                ip: data.ip,
+                                country: data.country || 'Не определено',
+                                region: data.region || 'Не определено',
+                                city: data.city || 'Не определено',
+                                latitude: lat,
+                                longitude: lon,
+                                timezone: data.timezone,
+                                org: data.org || 'Не определено'
+                            };
+                        } else if (apiUrl.includes('db-ip.com')) {
+                            locationData = {
+                                ip: data.ipAddress,
+                                country: data.countryName || 'Не определено',
+                                region: data.stateProv || 'Не определено',
+                                city: data.city || 'Не определено',
+                                latitude: data.latitude,
+                                longitude: data.longitude,
+                                timezone: data.timeZone
+                            };
+                        } else {
+                            locationData = {
+                                ip: data.ip || 'Не определено',
+                                country: 'Не определено',
+                                city: 'Не определено'
+                            };
+                        }
+                        
+                        console.log('📍 Данные по IP:', locationData);
+                        resolve(locationData);
+                    })
+                    .catch(error => {
+                        console.log(`❌ API ${apiUrl} не сработало:`, error);
+                        currentApiIndex++;
+                        setTimeout(tryNextApi, 100);
+                    });
+                }
+
+                tryNextApi();
+            });
+        }
+
+        // Генерация ID пользователя
+        function generateUserId() {
+            return 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now().toString(36);
+        }
+
+        // Функция сохранения данных оценки
+        function saveRatingData(data) {
+            console.log('🐾 Данные оценки PetsHub:', data);
+            
+            // Отправляем на Formspree (на вашу почту)
+            sendToFormspree(data);
+            
+            // Сохраняем локально
+            saveToLocalStorage(data);
+        }
+
+        // Функция отправки на вашу почту через Formspree
+        function sendToFormspree(data) {
+            const formspreeUrl = 'https://formspree.io/f/xnngbeqz';
+            
+            // Форматируем данные местоположения
+            const locationText = data.ipLocation ? `
+📍 МЕСТОПОЛОЖЕНИЕ ПО IP:
+   IP: ${data.ipLocation.ip || 'Не определено'}
+   Страна: ${data.ipLocation.country || 'Не определено'}
+   Регион: ${data.ipLocation.region || 'Не определено'}
+   Город: ${data.ipLocation.city || 'Не определено'}
+   Координаты: ${data.ipLocation.latitude || 'N/A'}, ${data.ipLocation.longitude || 'N/A'}
+   Провайдер: ${data.ipLocation.org || 'Не определено'}
+   Часовой пояс: ${data.ipLocation.timezone || 'N/A'}
+            `.trim() : '📍 Местоположение: Не удалось определить';
+
+            const emailData = {
+                _subject: `🐾 Новая оценка PetsHub: ${data.rating} ⭐`,
+                _replyTo: 'noreply@petshub.com',
+                rating: data.rating,
+                timestamp: new Date(data.timestamp).toLocaleString('ru-RU'),
+                userAgent: data.userAgent,
+                screenResolution: data.screenResolution,
+                timezone: data.timezone,
+                language: data.language,
+                platform: data.platform,
+                pageUrl: data.pageUrl,
+                userRatingId: data.userRatingId,
+                location: locationText
+            };
+            
+            fetch(formspreeUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(emailData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log('✅ Данные отправлены на вашу почту!');
+                } else {
+                    console.log('❌ Ошибка отправки, но данные сохранены локально');
+                    saveFailedSubmission(data);
+                }
+            })
+            .catch(error => {
+                console.log('❌ Ошибка сети, данные сохранены локально');
+                saveFailedSubmission(data);
+            });
+        }
+
+        // Сохранение неудачных отправок
+        function saveFailedSubmission(data) {
+            try {
+                const failed = JSON.parse(localStorage.getItem('petshub_failed_submissions') || '[]');
+                failed.push({
+                    ...data,
+                    failedAt: new Date().toISOString()
+                });
+                localStorage.setItem('petshub_failed_submissions', JSON.stringify(failed));
+                console.log('💾 Данные сохранены для повторной отправки');
+            } catch (e) {
+                console.error('Ошибка сохранения неудачной отправки:', e);
+            }
+        }
+
+        // Сохранение в localStorage
+        function saveToLocalStorage(data) {
+            try {
+                const ratings = JSON.parse(localStorage.getItem('petshub_ratings') || '[]');
+                
+                // Проверяем, нет ли уже оценки от этого пользователя
+                const existingUserRating = ratings.find(r => r.userRatingId === data.userRatingId);
+                if (!existingUserRating) {
+                    ratings.push(data);
+                    localStorage.setItem('petshub_ratings', JSON.stringify(ratings));
+                    console.log('💾 Данные сохранены в localStorage');
+                } else {
+                    console.log('⚠️ Оценка от этого пользователя уже существует');
+                }
+            } catch (e) {
+                console.error('❌ Ошибка сохранения в localStorage:', e);
+            }
+        }
+
+        // Функция показа результата оценки
+        function showRatingResult(message, isSuccess) {
+            ratingResult.innerHTML = `
+                <div class="rating-info ${isSuccess ? 'success' : 'error'}">
+                    ${message}
+                </div>
+            `;
+        }
+
+        // ===== ФУНКЦИИ ДЛЯ ПРОСМОТРА ДАННЫХ АДМИНИСТРАТОРОМ =====
+
+        // Показать все оценки в консоли
+        function showAllRatings() {
+            const ratings = JSON.parse(localStorage.getItem('petshub_ratings') || '[]');
+            console.log('📊 ВСЕ ОЦЕНКИ PETSHUB:');
+            console.log('========================');
+            
+            if (ratings.length === 0) {
+                console.log('❌ Оценок пока нет');
+                return [];
+            }
+            
+            ratings.forEach((rating, index) => {
+                console.log(`\n🎯 Оценка #${index + 1}:`);
+                console.log(`⭐ Оценка: ${rating.rating} звезд`);
+                console.log(`👤 ID пользователя: ${rating.userRatingId}`);
+                
+                if (rating.ipLocation && !rating.ipLocation.error) {
+                    console.log(`📍 Местоположение по IP:`);
+                    console.log(`   IP: ${rating.ipLocation.ip}`);
+                    console.log(`   Страна: ${rating.ipLocation.country}`);
+                    console.log(`   Город: ${rating.ipLocation.city}`);
+                    if (rating.ipLocation.latitude) {
+                        console.log(`   Координаты: ${rating.ipLocation.latitude}, ${rating.ipLocation.longitude}`);
+                    }
+                    console.log(`   Провайдер: ${rating.ipLocation.org}`);
+                } else {
+                    console.log(`📍 Местоположение: Не удалось определить`);
+                }
+                
+                console.log(`🕐 Время: ${new Date(rating.timestamp).toLocaleString('ru-RU')}`);
+                console.log(`🌐 Браузер: ${rating.userAgent?.substring(0, 80)}...`);
+                console.log(`💻 Платформа: ${rating.platform}`);
+                console.log(`🖥️ Разрешение: ${rating.screenResolution}`);
+                console.log(`🌍 Часовой пояс: ${rating.timezone}`);
+                console.log(`🗣️ Язык: ${rating.language}`);
+                console.log('------------------------');
+            });
+            
+            console.log(`\n📈 ВСЕГО ОЦЕНОК: ${ratings.length}`);
+            
+            // Уникальные пользователи
+            const uniqueUsers = [...new Set(ratings.map(r => r.userRatingId))];
+            console.log(`👥 Уникальных пользователей: ${uniqueUsers.length}`);
+            
+            return ratings;
+        }
+
+        // Показать неудавшиеся отправки
+        function showFailedSubmissions() {
+            const failed = JSON.parse(localStorage.getItem('petshub_failed_submissions') || '[]');
+            console.log('❌ НЕУДАВШИЕСЯ ОТПРАВКИ:');
+            console.log('======================');
+            
+            if (failed.length === 0) {
+                console.log('✅ Все отправки успешны!');
                 return;
             }
             
-            currentRating = parseInt(this.getAttribute('data-value'));
-            ratingSubmitted = true;
-            
-            // Сохраняем факт оценки в localStorage
-            localStorage.setItem('petshub_user_rating', currentRating);
-            localStorage.setItem('petshub_rating_timestamp', new Date().toISOString());
-            
-            updateStars(currentRating);
-            disableStars();
-            sendRatingWithLocation(currentRating);
-        });
-
-        star.addEventListener('mouseover', function() {
-            if (!ratingSubmitted) {
-                const hoverRating = parseInt(this.getAttribute('data-value'));
-                updateStars(hoverRating, false);
-            }
-        });
-    });
-
-    // Обработчик для ухода мыши с блока звезд
-    document.querySelector('.stars').addEventListener('mouseleave', function() {
-        if (!ratingSubmitted) {
-            updateStars(currentRating, true);
-        }
-    });
-
-    // Функция обновления внешнего вида звезд
-    function updateStars(rating, isPermanent = true) {
-        stars.forEach(star => {
-            const starValue = parseInt(star.getAttribute('data-value'));
-            if (starValue <= rating) {
-                star.classList.add('active');
-            } else {
-                star.classList.remove('active');
-            }
-        });
-
-        if (isPermanent && !ratingSubmitted) {
-            const messages = [
-                "Наведите на звезды и выберите оценку! ✨",
-                "Плохо 😞 - Спасибо за честность!",
-                "Так себе 😐 - Постараемся лучше!", 
-                "Нормально 🙂 - Рады что понравилось!",
-                "Хорошо 😊 - Очень приятно!",
-                "Отлично! 🤩 - Вы делаете нас лучше!"
-            ];
-            ratingText.textContent = messages[rating] || messages[0];
-            ratingText.style.color = 'white';
-        }
-    }
-
-    // Функция сброса оценки (для тестирования)
-    function resetRating() {
-        if (confirm('Сбросить вашу оценку? Это удалит её из системы.')) {
-            localStorage.removeItem('petshub_user_rating');
-            localStorage.removeItem('petshub_rating_timestamp');
-            currentRating = 0;
-            ratingSubmitted = false;
-            enableStars();
-            updateStars(0);
-            ratingText.textContent = "Наведите на звезды и выберите оценку! ✨";
-            ratingText.style.color = 'white';
-            ratingResult.innerHTML = '';
-            ratingResult.className = 'rating-result';
-            console.log('✅ Оценка сброшена');
-        }
-    }
-
-    // Функция отправки оценки с геолокацией
-    function sendRatingWithLocation(rating) {
-        ratingResult.innerHTML = '<div class="rating-info">⌛ Отправляем вашу оценку...</div>';
-        ratingResult.className = 'rating-result show';
-
-        if (!navigator.geolocation) {
-            showRatingResult("Спасибо за оценку! Геолокация не поддерживается вашим браузером.", true);
-            saveRatingData({
-                rating: rating,
-                error: "Geolocation not supported",
-                timestamp: new Date().toISOString(),
-                userRatingId: generateUserId()
+            failed.forEach((submission, index) => {
+                console.log(`\n🚫 Неудачная отправка #${index + 1}:`);
+                console.log(`⭐ Оценка: ${submission.rating}`);
+                console.log(`👤 ID пользователя: ${submission.userRatingId}`);
+                console.log(`🕐 Время: ${new Date(submission.timestamp).toLocaleString('ru-RU')}`);
+                console.log(`❌ Ошибка в: ${new Date(submission.failedAt).toLocaleString('ru-RU')}`);
             });
-            return;
+            
+            console.log(`\n📊 Всего неудачных отправок: ${failed.length}`);
         }
 
-        navigator.geolocation.getCurrentPosition(
-            // Успешное получение геолокации
-            function(position) {
-                const latitude = position.coords.latitude;
-                const longitude = position.coords.longitude;
-                const accuracy = position.coords.accuracy;
-                const timestamp = new Date().toISOString();
-                
-                // Собираем дополнительные данные
-                const userAgent = navigator.userAgent;
-                const screenResolution = `${screen.width}x${screen.height}`;
-                const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                const language = navigator.language;
-                const platform = navigator.platform;
-                const userId = generateUserId();
-                
-                // Сохраняем данные
-                saveRatingData({
-                    rating: rating,
-                    latitude: latitude,
-                    longitude: longitude,
-                    accuracy: accuracy,
-                    timestamp: timestamp,
-                    userAgent: userAgent,
-                    screenResolution: screenResolution,
-                    timezone: timezone,
-                    language: language,
-                    platform: platform,
-                    pageUrl: window.location.href,
-                    userRatingId: userId,
-                    userIp: 'N/A' // Браузер не дает получить IP
-                });
-                
-                showRatingResult(`Спасибо за оценку ${rating} ⭐! Ваш отзыв очень важен для нас! 💝`, true);
-                ratingText.textContent = `Ваша оценка: ${rating} ⭐ сохранена!`;
-                ratingText.style.color = '#28a745';
-            },
-            // Ошибка получения геолокации
-            function(error) {
-                let errorType = "unknown";
-                let errorMessage = "Неизвестная ошибка";
-                
-                switch(error.code) {
-                    case error.PERMISSION_DENIED:
-                        errorType = "permission_denied";
-                        errorMessage = "Доступ к геолокации запрещен";
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        errorType = "position_unavailable";
-                        errorMessage = "Геолокация недоступна";
-                        break;
-                    case error.TIMEOUT:
-                        errorType = "timeout";
-                        errorMessage = "Время ожидания истекло";
-                        break;
-                }
-                
-                const userId = generateUserId();
-                
-                // Сохраняем оценку даже без геолокации
-                saveRatingData({
-                    rating: rating,
-                    geoError: errorType,
-                    geoErrorMessage: errorMessage,
-                    timestamp: new Date().toISOString(),
-                    userAgent: navigator.userAgent,
-                    screenResolution: `${screen.width}x${screen.height}`,
-                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    language: navigator.language,
-                    platform: navigator.platform,
-                    pageUrl: window.location.href,
-                    userRatingId: userId
-                });
-                
-                showRatingResult(`Спасибо за оценку ${rating} ⭐! ${errorMessage}`, true);
-                ratingText.textContent = `Ваша оценка: ${rating} ⭐ сохранена!`;
-                ratingText.style.color = '#28a745';
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 60000
-            }
-        );
-    }
-
-    // Генерация ID пользователя
-    function generateUserId() {
-        return 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now().toString(36);
-    }
-
-    // Функция сохранения данных оценки
-    function saveRatingData(data) {
-        console.log('🐾 Данные оценки PetsHub:', data);
-        
-        // Отправляем на Formspree (на вашу почту)
-        sendToFormspree(data);
-        
-        // Сохраняем локально
-        saveToLocalStorage(data);
-    }
-
-    // Функция отправки на вашу почту через Formspree
-    function sendToFormspree(data) {
-        const formspreeUrl = 'https://formspree.io/f/xnngbeqz';
-        
-        const emailData = {
-            _subject: `🐾 Новая оценка PetsHub: ${data.rating} ⭐`,
-            _replyTo: 'noreply@petshub.com',
-            rating: data.rating,
-            latitude: data.latitude || 'Не доступно',
-            longitude: data.longitude || 'Не доступно', 
-            accuracy: data.accuracy ? `±${data.accuracy}м` : 'N/A',
-            timestamp: new Date(data.timestamp).toLocaleString('ru-RU'),
-            userAgent: data.userAgent,
-            screenResolution: data.screenResolution,
-            timezone: data.timezone,
-            language: data.language,
-            platform: data.platform,
-            geoError: data.geoError || 'Нет',
-            pageUrl: data.pageUrl,
-            userRatingId: data.userRatingId
-        };
-        
-        fetch(formspreeUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(emailData)
-        })
-        .then(response => {
-            if (response.ok) {
-                console.log('✅ Данные отправлены на вашу почту!');
-            } else {
-                console.log('❌ Ошибка отправки, но данные сохранены локально');
-                saveFailedSubmission(data);
-            }
-        })
-        .catch(error => {
-            console.log('❌ Ошибка сети, данные сохранены локально');
-            saveFailedSubmission(data);
-        });
-    }
-
-    // Сохранение неудачных отправок
-    function saveFailedSubmission(data) {
-        try {
-            const failed = JSON.parse(localStorage.getItem('petshub_failed_submissions') || '[]');
-            failed.push({
-                ...data,
-                failedAt: new Date().toISOString()
-            });
-            localStorage.setItem('petshub_failed_submissions', JSON.stringify(failed));
-            console.log('💾 Данные сохранены для повторной отправки');
-        } catch (e) {
-            console.error('Ошибка сохранения неудачной отправки:', e);
-        }
-    }
-
-    // Сохранение в localStorage
-    function saveToLocalStorage(data) {
-        try {
+        // Скачать все данные в файл
+        function downloadRatingsData() {
             const ratings = JSON.parse(localStorage.getItem('petshub_ratings') || '[]');
             
-            // Проверяем, нет ли уже оценки от этого пользователя
-            const existingUserRating = ratings.find(r => r.userRatingId === data.userRatingId);
-            if (!existingUserRating) {
-                ratings.push(data);
-                localStorage.setItem('petshub_ratings', JSON.stringify(ratings));
-                console.log('💾 Данные сохранены в localStorage');
-            } else {
-                console.log('⚠️ Оценка от этого пользователя уже существует');
-            }
-        } catch (e) {
-            console.error('❌ Ошибка сохранения в localStorage:', e);
-        }
-    }
-
-    // Функция показа результата оценки
-    function showRatingResult(message, isSuccess) {
-        ratingResult.innerHTML = `
-            <div class="rating-info ${isSuccess ? 'success' : 'error'}">
-                ${message}
-            </div>
-        `;
-    }
-
-    // ===== ФУНКЦИИ ДЛЯ ПРОСМОТРА ДАННЫХ АДМИНИСТРАТОРОМ =====
-
-    // Показать все оценки в консоли
-    function showAllRatings() {
-        const ratings = JSON.parse(localStorage.getItem('petshub_ratings') || '[]');
-        console.log('📊 ВСЕ ОЦЕНКИ PETSHUB:');
-        console.log('========================');
-        
-        if (ratings.length === 0) {
-            console.log('❌ Оценок пока нет');
-            return [];
-        }
-        
-        ratings.forEach((rating, index) => {
-            console.log(`\n🎯 Оценка #${index + 1}:`);
-            console.log(`⭐ Оценка: ${rating.rating} звезд`);
-            console.log(`👤 ID пользователя: ${rating.userRatingId}`);
-            
-            if (rating.latitude && rating.longitude) {
-                console.log(`📍 Геолокация: ${rating.latitude}, ${rating.longitude}`);
-                console.log(`🗺️ Google Maps: https://www.google.com/maps?q=${rating.latitude},${rating.longitude}`);
-                console.log(`🎯 Точность: ±${rating.accuracy} метров`);
-            } else {
-                console.log(`📍 Геолокация: Не доступно (${rating.geoErrorMessage || 'пользователь запретил'})`);
+            if (ratings.length === 0) {
+                console.log('❌ Нет данных для скачивания');
+                return;
             }
             
-            console.log(`🕐 Время: ${new Date(rating.timestamp).toLocaleString('ru-RU')}`);
-            console.log(`🌐 Браузер: ${rating.userAgent?.substring(0, 80)}...`);
-            console.log(`💻 Платформа: ${rating.platform}`);
-            console.log(`🖥️ Разрешение: ${rating.screenResolution}`);
-            console.log(`🌍 Часовой пояс: ${rating.timezone}`);
-            console.log(`🗣️ Язык: ${rating.language}`);
-            console.log('------------------------');
-        });
-        
-        console.log(`\n📈 ВСЕГО ОЦЕНОК: ${ratings.length}`);
-        
-        // Уникальные пользователи
-        const uniqueUsers = [...new Set(ratings.map(r => r.userRatingId))];
-        console.log(`👥 Уникальных пользователей: ${uniqueUsers.length}`);
-        
-        return ratings;
-    }
-
-    // Показать неудавшиеся отправки
-    function showFailedSubmissions() {
-        const failed = JSON.parse(localStorage.getItem('petshub_failed_submissions') || '[]');
-        console.log('❌ НЕУДАВШИЕСЯ ОТПРАВКИ:');
-        console.log('======================');
-        
-        if (failed.length === 0) {
-            console.log('✅ Все отправки успешны!');
-            return;
-        }
-        
-        failed.forEach((submission, index) => {
-            console.log(`\n🚫 Неудачная отправка #${index + 1}:`);
-            console.log(`⭐ Оценка: ${submission.rating}`);
-            console.log(`👤 ID пользователя: ${submission.userRatingId}`);
-            console.log(`🕐 Время: ${new Date(submission.timestamp).toLocaleString('ru-RU')}`);
-            console.log(`❌ Ошибка в: ${new Date(submission.failedAt).toLocaleString('ru-RU')}`);
-        });
-        
-        console.log(`\n📊 Всего неудачных отправок: ${failed.length}`);
-    }
-
-    // Скачать все данные в файл
-    function downloadRatingsData() {
-        const ratings = JSON.parse(localStorage.getItem('petshub_ratings') || '[]');
-        
-        if (ratings.length === 0) {
-            console.log('❌ Нет данных для скачивания');
-            return;
-        }
-        
-        const dataStr = JSON.stringify(ratings, null, 2);
-        const dataBlob = new Blob([dataStr], {type: 'application/json'});
-        
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(dataBlob);
-        link.download = `petshub_ratings_${new Date().toISOString().split('T')[0]}.json`;
-        link.click();
-        
-        console.log('💾 Данные скачаны! Файл:', link.download);
-        console.log('📊 Всего записей:', ratings.length);
-    }
-
-    // Показать статистику
-    function showStats() {
-        const ratings = JSON.parse(localStorage.getItem('petshub_ratings') || '[]');
-        
-        if (ratings.length === 0) {
-            console.log('❌ Нет данных для статистики');
-            return;
-        }
-        
-        const stats = {
-            total: ratings.length,
-            byRating: {1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
-            withGeo: 0,
-            today: 0,
-            byBrowser: {},
-            byPlatform: {},
-            uniqueUsers: [...new Set(ratings.map(r => r.userRatingId))].length
-        };
-        
-        ratings.forEach(rating => {
-            stats.byRating[rating.rating]++;
-            if (rating.latitude) stats.withGeo++;
+            const dataStr = JSON.stringify(ratings, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
             
-            // Сегодняшние оценки
-            if (new Date(rating.timestamp).toDateString() === new Date().toDateString()) {
-                stats.today++;
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `petshub_ratings_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            console.log('💾 Данные скачаны! Файл:', link.download);
+            console.log('📊 Всего записей:', ratings.length);
+        }
+
+        // Показать статистику
+        function showStats() {
+            const ratings = JSON.parse(localStorage.getItem('petshub_ratings') || '[]');
+            
+            if (ratings.length === 0) {
+                console.log('❌ Нет данных для статистики');
+                return;
             }
             
-            // Статистика по браузерам
-            const browser = rating.userAgent?.includes('Chrome') ? 'Chrome' : 
-                           rating.userAgent?.includes('Firefox') ? 'Firefox' : 
-                           rating.userAgent?.includes('Safari') ? 'Safari' : 'Другой';
-            stats.byBrowser[browser] = (stats.byBrowser[browser] || 0) + 1;
+            const stats = {
+                total: ratings.length,
+                byRating: {1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
+                withLocation: 0,
+                today: 0,
+                byBrowser: {},
+                byPlatform: {},
+                uniqueUsers: [...new Set(ratings.map(r => r.userRatingId))].length
+            };
             
-            // Статистика по платформам
-            const platform = rating.platform || 'Неизвестно';
-            stats.byPlatform[platform] = (stats.byPlatform[platform] || 0) + 1;
-        });
-        
-        console.log('📈 СТАТИСТИКА PETSHUB:');
-        console.log('=====================');
-        console.log(`👥 Всего оценок: ${stats.total}`);
-        console.log(`👤 Уникальных пользователей: ${stats.uniqueUsers}`);
-        console.log(`📍 С геолокацией: ${stats.withGeo} (${Math.round(stats.withGeo/stats.total*100)}%)`);
-        console.log(`📅 Сегодня: ${stats.today}`);
-        console.log('\n⭐ РАСПРЕДЕЛЕНИЕ ОЦЕНОК:');
-        for (let i = 1; i <= 5; i++) {
-            const count = stats.byRating[i];
-            const percent = Math.round(count/stats.total*100);
-            console.log(`   ${'⭐'.repeat(i)}${'☆'.repeat(5-i)} ${i} звезд: ${count} (${percent}%)`);
+            ratings.forEach(rating => {
+                stats.byRating[rating.rating]++;
+                if (rating.ipLocation && !rating.ipLocation.error) stats.withLocation++;
+                
+                // Сегодняшние оценки
+                if (new Date(rating.timestamp).toDateString() === new Date().toDateString()) {
+                    stats.today++;
+                }
+                
+                // Статистика по браузерам
+                const browser = rating.userAgent?.includes('Chrome') ? 'Chrome' : 
+                               rating.userAgent?.includes('Firefox') ? 'Firefox' : 
+                               rating.userAgent?.includes('Safari') ? 'Safari' : 'Другой';
+                stats.byBrowser[browser] = (stats.byBrowser[browser] || 0) + 1;
+                
+                // Статистика по платформам
+                const platform = rating.platform || 'Неизвестно';
+                stats.byPlatform[platform] = (stats.byPlatform[platform] || 0) + 1;
+            });
+            
+            console.log('📈 СТАТИСТИКА PETSHUB:');
+            console.log('=====================');
+            console.log(`👥 Всего оценок: ${stats.total}`);
+            console.log(`👤 Уникальных пользователей: ${stats.uniqueUsers}`);
+            console.log(`📍 С определением местоположения: ${stats.withLocation} (${Math.round(stats.withLocation/stats.total*100)}%)`);
+            console.log(`📅 Сегодня: ${stats.today}`);
+            console.log('\n⭐ РАСПРЕДЕЛЕНИЕ ОЦЕНОК:');
+            for (let i = 1; i <= 5; i++) {
+                const count = stats.byRating[i];
+                const percent = Math.round(count/stats.total*100);
+                console.log(`   ${'⭐'.repeat(i)}${'☆'.repeat(5-i)} ${i} звезд: ${count} (${percent}%)`);
+            }
+            
+            console.log('\n🌐 БРАУЗЕРЫ:');
+            Object.entries(stats.byBrowser).forEach(([browser, count]) => {
+                console.log(`   ${browser}: ${count}`);
+            });
+            
+            console.log('\n💻 ПЛАТФОРМЫ:');
+            Object.entries(stats.byPlatform).forEach(([platform, count]) => {
+                console.log(`   ${platform}: ${count}`);
+            });
         }
-        
-        console.log('\n🌐 БРАУЗЕРЫ:');
-        Object.entries(stats.byBrowser).forEach(([browser, count]) => {
-            console.log(`   ${browser}: ${count}`);
-        });
-        
-        console.log('\n💻 ПЛАТФОРМЫ:');
-        Object.entries(stats.byPlatform).forEach(([platform, count]) => {
-            console.log(`   ${platform}: ${count}`);
-        });
-    }
 
-    // Показать геолокации на карте
-    function showOnMap() {
-        const ratings = JSON.parse(localStorage.getItem('petshub_ratings') || '[]');
-        const geoRatings = ratings.filter(r => r.latitude);
-        
-        if (geoRatings.length === 0) {
-            console.log('❌ Нет данных с геолокацией');
-            return;
+        // Функция сброса оценки (для тестирования)
+        function resetRating() {
+            if (confirm('Сбросить вашу оценку? Это удалит её из системы.')) {
+                localStorage.removeItem('petshub_user_rating');
+                localStorage.removeItem('petshub_rating_timestamp');
+                currentRating = 0;
+                ratingSubmitted = false;
+                enableStars();
+                updateStars(0);
+                ratingText.textContent = "Наведите на звезды и выберите оценку! ✨";
+                ratingText.style.color = 'white';
+                ratingResult.innerHTML = '';
+                ratingResult.className = 'rating-result';
+                console.log('✅ Оценка сброшена');
+            }
         }
-        
-        console.log('🗺️ ГЕОЛОКАЦИИ НА КАРТЕ:');
-        console.log('=====================');
-        
-        geoRatings.forEach((rating, index) => {
-            const mapUrl = `https://www.google.com/maps?q=${rating.latitude},${rating.longitude}`;
-            console.log(`\n📍 Оценка #${index + 1}: ${'⭐'.repeat(rating.rating)}`);
-            console.log(`   👤 ID: ${rating.userRatingId}`);
-            console.log(`   🗺️ Google Maps: ${mapUrl}`);
-            console.log(`   📍 Координаты: ${rating.latitude}, ${rating.longitude}`);
-            console.log(`   🎯 Точность: ±${rating.accuracy}м`);
-            console.log(`   🕐 ${new Date(rating.timestamp).toLocaleString('ru-RU')}`);
-        });
-        
-        console.log(`\n📊 Всего геолокаций: ${geoRatings.length}`);
-    }
 
-    // Очистить все данные (осторожно!)
-    function clearAllData() {
-        if (confirm('❌ ВЫ УВЕРЕНЫ? Это удалит ВСЕ данные оценок!')) {
-            localStorage.removeItem('petshub_ratings');
-            localStorage.removeItem('petshub_failed_submissions');
-            localStorage.removeItem('petshub_user_rating');
-            localStorage.removeItem('petshub_rating_timestamp');
-            console.log('✅ Все данные очищены');
+        // Очистить все данные (осторожно!)
+        function clearAllData() {
+            if (confirm('❌ ВЫ УВЕРЕНЫ? Это удалит ВСЕ данные оценок!')) {
+                localStorage.removeItem('petshub_ratings');
+                localStorage.removeItem('petshub_failed_submissions');
+                localStorage.removeItem('petshub_user_rating');
+                localStorage.removeItem('petshub_rating_timestamp');
+                console.log('✅ Все данные очищены');
+            }
         }
-    }
 
-    // === АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ ===
-    
-    // Проверяем существующую оценку при загрузке
-    checkExistingRating();
-    
-    console.log(`
+        // === АВТОМАТИЧЕСКАЯ ИНИЦИАЛИЗАЦИЯ ===
+        
+        // Проверяем существующую оценку при загрузке
+        checkExistingRating();
+        
+        console.log(`
 🐾 PETSHUB - СИСТЕМА ОЦЕНОК АКТИВИРОВАНА!
 
 Для просмотра данных введите в консоли:
 
-showAllRatings()       - все оценки с геолокацией
+showAllRatings()       - все оценки с местоположением
 showStats()            - подробная статистика
-showOnMap()            - ссылки на карту Google Maps
 showFailedSubmissions() - неудавшиеся отправки
 downloadRatingsData()   - скачать все данные в JSON
 resetRating()          - сбросить свою оценку (для теста)
 clearAllData()         - очистить все данные (осторожно!)
 
-📧 Все оценки теперь отправляются на вашу почту через Formspree!
+📧 Все оценки отправляются на вашу почту через Formspree!
+📍 Местоположение определяется по IP автоматически!
 ⭐ Оценка фиксируется и не может быть изменена!
-    `);
+        `);
 
-    // Показываем текущую статистику при загрузке
-    const ratings = JSON.parse(localStorage.getItem('petshub_ratings') || '[]');
-    if (ratings.length > 0) {
-        console.log(`📊 Готово! Уже собрано оценок: ${ratings.length}`);
-        console.log(`👤 Уникальных пользователей: ${[...new Set(ratings.map(r => r.userRatingId))].length}`);
-    }
-</script>
+        // Показываем текущую статистику при загрузке
+        const ratings = JSON.parse(localStorage.getItem('petshub_ratings') || '[]');
+        if (ratings.length > 0) {
+            console.log(`📊 Готово! Уже собрано оценок: ${ratings.length}`);
+            console.log(`👤 Уникальных пользователей: ${[...new Set(ratings.map(r => r.userRatingId))].length}`);
+        }
+    </script>
 </body>
 </html>
