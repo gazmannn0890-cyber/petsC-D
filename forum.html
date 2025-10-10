@@ -4,8 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Форум - PetsC-D</title>
+    
+    <!-- VK ID SDK -->
+    <script src="https://unpkg.com/@vkid/sdk@2.0.0/dist-sdk/umd/index.js"></script>
+    
     <style>
-        /* СТИЛИ ОСТАВЛЯЕМ ПРЕЖНИМИ ИЗ ПРЕДЫДУЩЕГО КОДА */
+        /* ВАШИ СТИЛИ ОСТАЮТСЯ ПРЕЖНИМИ */
         * {
             margin: 0;
             padding: 0;
@@ -367,6 +371,17 @@
             margin-bottom: 20px;
             text-align: center;
         }
+
+        /* Стили для VK ID кнопки */
+        #vkid-container {
+            margin: 20px 0;
+        }
+
+        .vkid-button {
+            background: #0077FF !important;
+            border-radius: 8px !important;
+            height: 44px !important;
+        }
     </style>
 </head>
 <body>
@@ -402,7 +417,10 @@
                 <div id="topic-form-container">
                     <div class="auth-required">
                         <p>Чтобы создавать темы, войдите через VK</p>
-                        <button class="btn btn-vk" onclick="loginWithVK()">🚪 Войти через VK</button>
+                        <div id="vkid-container"></div>
+                        <p style="margin-top: 15px; font-size: 0.9em; color: #868e96;">
+                            Или <a href="#" onclick="simpleAuth(); return false;">войдите через имя</a>
+                        </p>
                     </div>
                 </div>
 
@@ -418,69 +436,79 @@
     </div>
 
     <script>
-        // УНИВЕРСАЛЬНАЯ АВТОРИЗАЦИЯ
-        const VK_CLIENT_ID = '54227853';
         const FORUM_DATA_KEY = 'petscd_forum_data_v2';
 
-        // Умная функция авторизации
-        function loginWithVK() {
-            // Пробуем разные варианты VK авторизации
-            const vkUrls = [
-                // Вариант 1: С redirect_uri на текущую страницу
-                `https://oauth.vk.com/authorize?client_id=${VK_CLIENT_ID}&display=page&redirect_uri=${encodeURIComponent(window.location.href)}&scope=offline&response_type=token&v=5.131`,
-                
-                // Вариант 2: С blank.html (стандартный для VK)
-                `https://oauth.vk.com/authorize?client_id=${VK_CLIENT_ID}&display=page&redirect_uri=${encodeURIComponent('https://oauth.vk.com/blank.html')}&scope=offline&response_type=token&v=5.131`,
-                
-                // Вариант 3: С popup
-                `https://oauth.vk.com/authorize?client_id=${VK_CLIENT_ID}&display=popup&redirect_uri=${encodeURIComponent(window.location.href)}&scope=offline&response_type=token&v=5.131`
-            ];
+        // Инициализация VK ID SDK
+        function initVKID() {
+            if ('VKIDSDK' in window) {
+                const VKID = window.VKIDSDK;
 
-            let currentTry = 0;
-            
-            function tryNextAuth() {
-                if (currentTry < vkUrls.length) {
-                    console.log('Пробуем VK auth вариант:', currentTry + 1);
-                    const authWindow = window.open(vkUrls[currentTry], 'VK Auth', 'width=600,height=700');
-                    currentTry++;
-                    
-                    // Проверяем успешность каждые 2 секунды
-                    const checkInterval = setInterval(() => {
-                        if (authWindow.closed) {
-                            clearInterval(checkInterval);
-                            if (!localStorage.getItem('is_authenticated')) {
-                                // Если окно закрылось без авторизации, пробуем следующий вариант
-                                setTimeout(tryNextAuth, 1000);
-                            }
+                try {
+                    VKID.Config.init({
+                        app: 54227853, // Ваш App ID
+                        redirectUrl: 'https://gazmannn0890-cyber.github.io/petsC-D/forum.html',
+                        state: 'forum_auth_' + Date.now(),
+                        scope: 'email'
+                    });
+
+                    const oneTap = new VKID.OneTap();
+
+                    oneTap.render({
+                        container: document.getElementById('vkid-container'),
+                        showAlternativeLogin: false,
+                        style: {
+                            height: 44,
+                            borderRadius: 8
                         }
+                    })
+                    .on(VKID.WidgetEvents.ERROR, function(error) {
+                        console.error('VK ID Error:', error);
+                        showMessage('Ошибка VK авторизации', 'error');
+                    })
+                    .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, function(payload) {
+                        console.log('VK ID Login Success:', payload);
                         
-                        // Если авторизовались, закрываем окно
-                        if (localStorage.getItem('is_authenticated')) {
-                            authWindow.close();
-                            clearInterval(checkInterval);
-                        }
-                    }, 2000);
-                    
-                    // Таймаут на случай если окно не закрывается
-                    setTimeout(() => {
-                        if (!authWindow.closed && !localStorage.getItem('is_authenticated')) {
-                            authWindow.close();
-                            clearInterval(checkInterval);
-                            setTimeout(tryNextAuth, 1000);
-                        }
-                    }, 10000);
-                    
-                } else {
-                    // Если все варианты VK не сработали, предлагаем простую авторизацию
-                    console.log('VK не сработал, предлагаем простую авторизацию');
-                    const useSimple = confirm('VK авторизация недоступна. Использовать простую авторизацию через имя?');
-                    if (useSimple) {
-                        simpleAuth();
-                    }
+                        const code = payload.code;
+                        const deviceId = payload.device_id;
+
+                        VKID.Auth.exchangeCode(code, deviceId)
+                            .then(function(authData) {
+                                console.log('VK ID Auth Data:', authData);
+                                handleVKIDSuccess(authData);
+                            })
+                            .catch(function(error) {
+                                console.error('VK ID Exchange Error:', error);
+                                showMessage('Ошибка обмена кода', 'error');
+                            });
+                    });
+
+                } catch (error) {
+                    console.error('VK ID Init Error:', error);
+                    showMessage('Ошибка инициализации VK ID', 'error');
                 }
+            } else {
+                console.error('VKIDSDK not loaded');
+                showMessage('VK ID SDK не загружен', 'error');
             }
-            
-            tryNextAuth();
+        }
+
+        // Обработка успешной авторизации VK ID
+        function handleVKIDSuccess(authData) {
+            if (authData && authData.user) {
+                const user = authData.user;
+                
+                localStorage.setItem('is_authenticated', 'true');
+                localStorage.setItem('user_name', `${user.first_name} ${user.last_name}`);
+                localStorage.setItem('user_avatar', user.avatar || `https://via.placeholder.com/100/667eea/ffffff?text=${user.first_name.charAt(0)}`);
+                localStorage.setItem('vk_user_id', user.id);
+                localStorage.setItem('vk_token', authData.token);
+                
+                checkAuth();
+                loadTopics();
+                showMessage(`Добро пожаловать, ${user.first_name}! 🎉`, 'success');
+            } else {
+                showMessage('Не удалось получить данные пользователя', 'error');
+            }
         }
 
         // Простая авторизация через имя (fallback)
@@ -500,44 +528,6 @@
                 showMessage(`Добро пожаловать, ${userName.trim()}! 🎉`, 'success');
             } else if (userName) {
                 alert('Имя должно содержать минимум 2 символа');
-            }
-        }
-
-        // Обработка VK callback из URL hash
-        function handleVKCallback() {
-            if (window.location.hash) {
-                const hashParams = new URLSearchParams(window.location.hash.substring(1));
-                const accessToken = hashParams.get('access_token');
-                const userId = hashParams.get('user_id');
-
-                if (accessToken && userId) {
-                    console.log('VK Auth Success via URL Hash');
-                    
-                    // Убираем hash из URL
-                    window.history.replaceState(null, null, window.location.pathname + window.location.search);
-                    
-                    // Получаем информацию о пользователе
-                    fetch(`https://api.vk.com/method/users.get?user_ids=${userId}&fields=photo_100,first_name,last_name&v=5.131`)
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.response && data.response[0]) {
-                                const user = data.response[0];
-                                localStorage.setItem('is_authenticated', 'true');
-                                localStorage.setItem('user_name', `${user.first_name} ${user.last_name}`);
-                                localStorage.setItem('user_avatar', user.photo_100);
-                                localStorage.setItem('vk_user_id', userId);
-                                localStorage.setItem('vk_token', accessToken);
-                                
-                                checkAuth();
-                                loadTopics();
-                                showMessage(`Добро пожаловать, ${user.first_name}! 🎉`, 'success');
-                            }
-                        })
-                        .catch(error => {
-                            console.error('VK API Error:', error);
-                            showMessage('Ошибка получения данных пользователя', 'error');
-                        });
-                }
             }
         }
 
@@ -593,11 +583,13 @@
                     <div class="auth-section">
                         <h3 style="margin-bottom: 15px; color: #2c3e50;">Добро пожаловать на форум PetsC-D!</h3>
                         <p style="margin-bottom: 20px; color: #5a6c7d; font-size: 1.05em;">Войдите через VK, чтобы участвовать в обсуждениях</p>
-                        <button class="btn btn-vk" onclick="loginWithVK()" style="padding: 14px 30px; font-size: 16px;">🚪 Войти через VK</button>
                     </div>
                 `;
 
-                authButtons.innerHTML = '<button class="btn btn-vk" onclick="loginWithVK()">🚪 Войти</button>';
+                authButtons.innerHTML = '<button class="btn btn-vk" onclick="simpleAuth()">🚪 Войти через имя</button>';
+                
+                // Инициализируем VK ID кнопку
+                setTimeout(initVKID, 100);
             }
         }
 
@@ -667,7 +659,6 @@
                     <div class="empty-state">
                         <h3>Пока нет тем для обсуждения</h3>
                         <p>Будьте первым! Создайте новую тему.</p>
-                        <button class="btn btn-vk" onclick="loginWithVK()">🚪 Войти и создать тему</button>
                     </div>
                 `;
                 return;
@@ -821,7 +812,6 @@
 
         // Инициализация
         document.addEventListener('DOMContentLoaded', function() {
-            handleVKCallback();
             checkAuth();
             loadTopics();
             
