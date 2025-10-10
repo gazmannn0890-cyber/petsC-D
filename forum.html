@@ -1,139 +1,313 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Форум - PetsC-D</title>
     <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            max-width: 800px; 
-            margin: 0 auto; 
-            padding: 20px;
-            background-color: #f5f5f5;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .header {
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 10px;
-            text-align: center;
-            margin-bottom: 30px;
+            min-height: 100vh;
+            padding: 20px;
         }
-        .issue { 
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
             background: white;
-            border: 1px solid #ddd; 
-            margin: 15px 0; 
-            padding: 20px; 
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .issue-title { 
-            font-weight: bold; 
-            font-size: 1.2em;
-            margin-bottom: 10px; 
+
+        .logo {
+            font-size: 2em;
+            font-weight: bold;
             color: #333;
         }
-        .issue-title a {
-            color: #667eea;
-            text-decoration: none;
-        }
-        .issue-title a:hover {
-            text-decoration: underline;
-        }
-        .new-topic { 
-            background: white;
-            padding: 25px; 
-            margin: 25px 0; 
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        .btn {
+
+        .nav-btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
             padding: 12px 25px;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
-            transition: transform 0.2s;
+            text-decoration: none;
+            display: inline-block;
         }
-        .btn:hover {
+
+        .nav-btn:hover {
             transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
+
+        .forum-container {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+
+        .topics-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .new-topic-section {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            height: fit-content;
+        }
+
+        .section-title {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .topic {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .topic:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .topic-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 10px;
+            display: block;
+            text-decoration: none;
+        }
+
+        .topic-title:hover {
+            color: #667eea;
+        }
+
+        .topic-body {
+            color: #6c757d;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .topic-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9em;
+            color: #868e96;
+        }
+
+        .topic-author {
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-input, .form-textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-input:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-textarea {
+            height: 120px;
+            resize: vertical;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
         .loading {
             text-align: center;
-            color: #666;
+            color: #6c757d;
+            padding: 40px;
             font-style: italic;
         }
-        .issue-meta {
-            color: #666;
-            font-size: 0.9em;
-            margin-top: 10px;
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        .comments-count {
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+        }
+
+        @media (max-width: 768px) {
+            .forum-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🐾 Форум PetsC-D</h1>
-        <p>Обсуждаем всё о питомцах и не только!</p>
-    </div>
-    
-    <div class="new-topic">
-        <h3>💬 Хочешь начать новую тему?</h3>
-        <p>Создай обсуждение и пригласи друзей!</p>
-        <button class="btn" onclick="createNewTopic()">📝 Создать новую тему</button>
-    </div>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🐾 PetsC-D Форум</div>
+            <a href="index.html" class="nav-btn">🏠 На главную</a>
+        </div>
 
-    <div id="issues-list">
-        <div class="loading">Загружаем темы обсуждений...</div>
+        <div class="forum-container">
+            <!-- Левая колонка - Список тем -->
+            <div class="topics-section">
+                <h2 class="section-title">📚 Темы для обсуждения</h2>
+                <div id="topics-list">
+                    <div class="loading">Загружаем темы обсуждений...</div>
+                </div>
+            </div>
+
+            <!-- Правая колонка - Создание новой темы -->
+            <div class="new-topic-section">
+                <h2 class="section-title">💬 Новая тема</h2>
+                <form id="new-topic-form">
+                    <div class="form-group">
+                        <label class="form-label" for="topic-title">Заголовок темы:</label>
+                        <input type="text" id="topic-title" class="form-input" placeholder="Введите заголовок..." required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="topic-description">Описание темы:</label>
+                        <textarea id="topic-description" class="form-textarea" placeholder="Опишите вашу тему подробнее..." required></textarea>
+                    </div>
+                    
+                    <button type="submit" class="submit-btn">📝 Создать тему</button>
+                </form>
+
+                <div style="margin-top: 25px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <h4 style="color: #495057; margin-bottom: 10px;">💡 Как это работает?</h4>
+                    <p style="color: #6c757d; font-size: 0.9em; line-height: 1.4;">
+                        Создавайте темы для обсуждения! После создания темы вы сможете общаться 
+                        в комментариях на GitHub. Все темы автоматически обновляются.
+                    </p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         const REPO_OWNER = 'gazmannn0890-cyber';
         const REPO_NAME = 'petsC-D';
 
-        // Загрузка всех issues (тем форума)
-        async function loadIssues() {
+        // Загрузка всех тем (issues)
+        async function loadTopics() {
             try {
-                const issuesList = document.getElementById('issues-list');
-                issuesList.innerHTML = '<div class="loading">Загружаем темы обсуждений...</div>';
+                const topicsList = document.getElementById('topics-list');
                 
                 const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues`);
-                const issues = await response.json();
+                const topics = await response.json();
                 
-                if (issues.length === 0) {
-                    issuesList.innerHTML = `
-                        <div class="issue">
+                if (topics.length === 0) {
+                    topicsList.innerHTML = `
+                        <div class="empty-state">
                             <h3>Пока нет тем для обсуждения</h3>
-                            <p>Будь первым! Создай новую тему обсуждения.</p>
+                            <p>Будьте первым! Создайте новую тему обсуждения.</p>
                         </div>
                     `;
                     return;
                 }
                 
-                issuesList.innerHTML = '';
+                topicsList.innerHTML = topics.map(topic => `
+                    <div class="topic">
+                        <a href="${topic.html_url}" target="_blank" class="topic-title">
+                            ${topic.title}
+                        </a>
+                        <div class="topic-body">
+                            ${topic.body || 'Нет описания'}
+                        </div>
+                        <div class="topic-meta">
+                            <div>
+                                <span class="topic-author">👤 ${topic.user.login}</span>
+                                • 📅 ${new Date(topic.created_at).toLocaleDateString('ru-RU')}
+                            </div>
+                            <div class="comments-count">
+                                💬 ${topic.comments}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
                 
-                issues.forEach(issue => {
-                    const issueElement = document.createElement('div');
-                    issueElement.className = 'issue';
-                    issueElement.innerHTML = `
-                        <div class="issue-title">
-                            <a href="${issue.html_url}" target="_blank">${issue.title}</a>
-                        </div>
-                        <div>${issue.body || 'Нет описания'}</div>
-                        <div class="issue-meta">
-                            💬 Комментарии: ${issue.comments} | 
-                            👤 Автор: ${issue.user.login} | 
-                            📅 ${new Date(issue.created_at).toLocaleDateString('ru-RU')} |
-                            #${issue.number}
-                        </div>
-                    `;
-                    issuesList.appendChild(issueElement);
-                });
             } catch (error) {
                 console.error('Ошибка загрузки:', error);
-                document.getElementById('issues-list').innerHTML = `
-                    <div class="issue">
+                document.getElementById('topics-list').innerHTML = `
+                    <div class="empty-state">
                         <h3>Ошибка загрузки</h3>
                         <p>Не удалось загрузить темы. Проверьте подключение к интернету.</p>
                     </div>
@@ -142,35 +316,66 @@
         }
 
         // Создание новой темы
-        function createNewTopic() {
-            const title = prompt('Введите заголовок темы:');
-            if (title) {
-                const body = prompt('Введите описание темы (можно оставить пустым):');
-                const url = `https://github.com/${REPO_OWNER}/${REPO_NAME}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body || '')}`;
+        document.getElementById('new-topic-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('topic-title').value;
+            const description = document.getElementById('topic-description').value;
+            
+            if (!title.trim()) {
+                alert('Пожалуйста, введите заголовок темы');
+                return;
+            }
+            
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Создаём тему...';
+            submitBtn.disabled = true;
+            
+            try {
+                // Открываем страницу создания issue на GitHub
+                const url = `https://github.com/${REPO_OWNER}/${REPO_NAME}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(description)}&labels=forum`;
                 window.open(url, '_blank');
                 
-                // Предложим обновить страницу через 10 секунд
-                setTimeout(() => {
-                    if (confirm('Тема создана! Обновить список тем?')) {
-                        loadIssues();
-                    }
-                }, 10000);
+                // Очищаем форму
+                document.getElementById('new-topic-form').reset();
+                
+                // Показываем сообщение об успехе
+                alert('Тема создана! Откроется новая вкладка с GitHub. После создания темы нажмите кнопку "Обновить" чтобы увидеть её в списке.');
+                
+            } catch (error) {
+                console.error('Ошибка создания темы:', error);
+                alert('Ошибка при создании темы. Попробуйте ещё раз.');
+            } finally {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
             }
-        }
+        });
 
-        // Обновлять список каждые 30 секунд
-        loadIssues();
-        setInterval(loadIssues, 30000);
-
-        // Кнопка ручного обновления
-        document.addEventListener('DOMContentLoaded', function() {
+        // Кнопка обновления в хедере
+        function addRefreshButton() {
             const header = document.querySelector('.header');
             const refreshBtn = document.createElement('button');
-            refreshBtn.className = 'btn';
-            refreshBtn.textContent = '🔄 Обновить';
+            refreshBtn.className = 'nav-btn';
             refreshBtn.style.marginLeft = '10px';
-            refreshBtn.onclick = loadIssues;
+            refreshBtn.innerHTML = '🔄 Обновить';
+            refreshBtn.onclick = function() {
+                loadTopics();
+                this.innerHTML = '⏳ Загружаем...';
+                setTimeout(() => {
+                    this.innerHTML = '🔄 Обновить';
+                }, 2000);
+            };
             header.appendChild(refreshBtn);
+        }
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTopics();
+            addRefreshButton();
+            
+            // Автообновление каждые 60 секунд
+            setInterval(loadTopics, 60000);
         });
     </script>
 </body>
