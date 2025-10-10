@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Форум - PetsC-D</title>
     <style>
+        /* СТИЛИ ОСТАВЛЯЕМ ПРЕЖНИМИ ИЗ ПРЕДЫДУЩЕГО КОДА */
         * {
             margin: 0;
             padding: 0;
@@ -85,7 +86,6 @@
             background: #28a745;
         }
 
-        /* Стили для авторизации */
         .auth-section {
             background: white;
             padding: 25px;
@@ -116,7 +116,6 @@
             font-size: 1.1em;
         }
 
-        /* Стили для форума */
         .forum-container {
             display: grid;
             grid-template-columns: 1fr 350px;
@@ -419,24 +418,102 @@
     </div>
 
     <script>
-        // Конфигурация VK
+        // УНИВЕРСАЛЬНАЯ АВТОРИЗАЦИЯ
         const VK_CLIENT_ID = '54227853';
-        const VK_REDIRECT_URI = window.location.origin + '/petsC-D/forum.html';
         const FORUM_DATA_KEY = 'petscd_forum_data_v2';
 
-        // Обработка VK callback при загрузке страницы
+        // Умная функция авторизации
+        function loginWithVK() {
+            // Пробуем разные варианты VK авторизации
+            const vkUrls = [
+                // Вариант 1: С redirect_uri на текущую страницу
+                `https://oauth.vk.com/authorize?client_id=${VK_CLIENT_ID}&display=page&redirect_uri=${encodeURIComponent(window.location.href)}&scope=offline&response_type=token&v=5.131`,
+                
+                // Вариант 2: С blank.html (стандартный для VK)
+                `https://oauth.vk.com/authorize?client_id=${VK_CLIENT_ID}&display=page&redirect_uri=${encodeURIComponent('https://oauth.vk.com/blank.html')}&scope=offline&response_type=token&v=5.131`,
+                
+                // Вариант 3: С popup
+                `https://oauth.vk.com/authorize?client_id=${VK_CLIENT_ID}&display=popup&redirect_uri=${encodeURIComponent(window.location.href)}&scope=offline&response_type=token&v=5.131`
+            ];
+
+            let currentTry = 0;
+            
+            function tryNextAuth() {
+                if (currentTry < vkUrls.length) {
+                    console.log('Пробуем VK auth вариант:', currentTry + 1);
+                    const authWindow = window.open(vkUrls[currentTry], 'VK Auth', 'width=600,height=700');
+                    currentTry++;
+                    
+                    // Проверяем успешность каждые 2 секунды
+                    const checkInterval = setInterval(() => {
+                        if (authWindow.closed) {
+                            clearInterval(checkInterval);
+                            if (!localStorage.getItem('is_authenticated')) {
+                                // Если окно закрылось без авторизации, пробуем следующий вариант
+                                setTimeout(tryNextAuth, 1000);
+                            }
+                        }
+                        
+                        // Если авторизовались, закрываем окно
+                        if (localStorage.getItem('is_authenticated')) {
+                            authWindow.close();
+                            clearInterval(checkInterval);
+                        }
+                    }, 2000);
+                    
+                    // Таймаут на случай если окно не закрывается
+                    setTimeout(() => {
+                        if (!authWindow.closed && !localStorage.getItem('is_authenticated')) {
+                            authWindow.close();
+                            clearInterval(checkInterval);
+                            setTimeout(tryNextAuth, 1000);
+                        }
+                    }, 10000);
+                    
+                } else {
+                    // Если все варианты VK не сработали, предлагаем простую авторизацию
+                    console.log('VK не сработал, предлагаем простую авторизацию');
+                    const useSimple = confirm('VK авторизация недоступна. Использовать простую авторизацию через имя?');
+                    if (useSimple) {
+                        simpleAuth();
+                    }
+                }
+            }
+            
+            tryNextAuth();
+        }
+
+        // Простая авторизация через имя (fallback)
+        function simpleAuth() {
+            const userName = prompt('Введите ваше имя для форума:');
+            if (userName && userName.trim().length >= 2) {
+                const userAvatar = `https://via.placeholder.com/100/667eea/ffffff?text=${userName.charAt(0).toUpperCase()}`;
+                
+                localStorage.setItem('is_authenticated', 'true');
+                localStorage.setItem('user_name', userName.trim());
+                localStorage.setItem('user_avatar', userAvatar);
+                localStorage.setItem('user_id', Date.now().toString());
+                
+                checkAuth();
+                loadTopics();
+                
+                showMessage(`Добро пожаловать, ${userName.trim()}! 🎉`, 'success');
+            } else if (userName) {
+                alert('Имя должно содержать минимум 2 символа');
+            }
+        }
+
+        // Обработка VK callback из URL hash
         function handleVKCallback() {
-            // Проверяем hash в URL (VK возвращает token в hash)
             if (window.location.hash) {
                 const hashParams = new URLSearchParams(window.location.hash.substring(1));
                 const accessToken = hashParams.get('access_token');
                 const userId = hashParams.get('user_id');
-                const expiresIn = hashParams.get('expires_in');
 
                 if (accessToken && userId) {
-                    console.log('VK Auth Success:', { accessToken, userId });
+                    console.log('VK Auth Success via URL Hash');
                     
-                    // Убираем hash из URL чтобы не мешал
+                    // Убираем hash из URL
                     window.history.replaceState(null, null, window.location.pathname + window.location.search);
                     
                     // Получаем информацию о пользователе
@@ -454,8 +531,6 @@
                                 checkAuth();
                                 loadTopics();
                                 showMessage(`Добро пожаловать, ${user.first_name}! 🎉`, 'success');
-                            } else {
-                                throw new Error('No user data in response');
                             }
                         })
                         .catch(error => {
@@ -511,7 +586,6 @@
                     </form>
                 `;
 
-                // Обработчик формы
                 document.getElementById('new-topic-form').addEventListener('submit', createTopic);
             } else {
                 // Пользователь не авторизован
@@ -527,13 +601,6 @@
             }
         }
 
-        // Авторизация через VK
-        function loginWithVK() {
-            const vkAuthUrl = `https://oauth.vk.com/authorize?client_id=${VK_CLIENT_ID}&display=page&redirect_uri=${encodeURIComponent(VK_REDIRECT_URI)}&scope=offline&response_type=token&v=5.131`;
-            console.log('Redirecting to VK:', vkAuthUrl);
-            window.location.href = vkAuthUrl;
-        }
-
         // Выход
         function logout() {
             if (confirm('Вы уверены, что хотите выйти?')) {
@@ -542,6 +609,7 @@
                 localStorage.removeItem('user_avatar');
                 localStorage.removeItem('vk_token');
                 localStorage.removeItem('vk_user_id');
+                localStorage.removeItem('user_id');
                 checkAuth();
                 loadTopics();
                 showMessage('Вы вышли из системы', 'info');
@@ -554,12 +622,10 @@
                 const topicsList = document.getElementById('topics-list');
                 topicsList.innerHTML = '<div class="loading">Загружаем темы обсуждений...</div>';
                 
-                // Имитация загрузки для плавности
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
                 let topics = JSON.parse(localStorage.getItem(FORUM_DATA_KEY)) || [];
                 
-                // Если нет данных, создаем демо-темы
                 if (topics.length === 0) {
                     topics = [
                         {
@@ -579,16 +645,6 @@
                                     createdAt: new Date(Date.now() - 3600000).toISOString()
                                 }
                             ]
-                        },
-                        {
-                            id: 2,
-                            title: "Лучший корм для кошек - ваш опыт?",
-                            description: "Друзья, поделитесь опытом - какие кормы для кошек вы считаете лучшими? Интересуют как сухие, так и влажные кормы. Особенно важен опыт владельцев кошек с чувствительным пищеварением.",
-                            authorName: "Катя_ВладелецКошки",
-                            authorAvatar: "https://via.placeholder.com/100/ff6b6b/ffffff?text=Cat",
-                            authorVKId: "demo1",
-                            createdAt: new Date(Date.now() - 7200000).toISOString(),
-                            comments: []
                         }
                     ];
                     localStorage.setItem(FORUM_DATA_KEY, JSON.stringify(topics));
@@ -680,37 +736,27 @@
             submitBtn.disabled = true;
             
             try {
-                // Имитация задержки для реалистичности
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                // Получаем текущие темы
                 const topics = JSON.parse(localStorage.getItem(FORUM_DATA_KEY)) || [];
                 
-                // Создаем новую тему
                 const newTopic = {
                     id: Date.now(),
                     title: title.trim(),
                     description: description.trim(),
                     authorName: localStorage.getItem('user_name'),
                     authorAvatar: localStorage.getItem('user_avatar'),
-                    authorVKId: localStorage.getItem('vk_user_id'),
+                    authorVKId: localStorage.getItem('vk_user_id') || localStorage.getItem('user_id'),
                     createdAt: new Date().toISOString(),
                     comments: []
                 };
                 
-                // Добавляем тему в начало списка
                 topics.unshift(newTopic);
-                
-                // Сохраняем обратно
                 localStorage.setItem(FORUM_DATA_KEY, JSON.stringify(topics));
                 
-                // Очищаем форму
                 document.getElementById('new-topic-form').reset();
-                
-                // Обновляем список тем
                 displayTopics(topics);
                 
-                // Показываем сообщение об успехе
                 showMessage('Тема успешно создана!', 'success');
                 
             } catch (error) {
@@ -775,14 +821,10 @@
 
         // Инициализация
         document.addEventListener('DOMContentLoaded', function() {
-            // Сначала обрабатываем VK callback (если есть)
             handleVKCallback();
-            
-            // Затем проверяем обычную авторизацию
             checkAuth();
             loadTopics();
             
-            // Показываем приветственное сообщение для новых пользователей
             if (!localStorage.getItem('forum_welcome_shown')) {
                 showMessage('Добро пожаловать на форум PetsC-D! 🐾');
                 localStorage.setItem('forum_welcome_shown', 'true');
