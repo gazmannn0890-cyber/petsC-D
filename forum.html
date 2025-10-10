@@ -9,7 +9,6 @@
     <script src="https://unpkg.com/@vkid/sdk@2.0.0/dist-sdk/umd/index.js"></script>
     
     <style>
-        /* ВАШИ СТИЛИ ОСТАЮТСЯ ПРЕЖНИМИ */
         * {
             margin: 0;
             padding: 0;
@@ -74,10 +73,6 @@
         .btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        }
-
-        .btn-vk {
-            background: #0077FF;
         }
 
         .btn-outline {
@@ -372,15 +367,15 @@
             text-align: center;
         }
 
-        /* Стили для VK ID кнопки */
-        #vkid-container {
+        /* Стили для VK OAuthList */
+        #vkid-oauth-container {
             margin: 20px 0;
+            display: flex;
+            justify-content: center;
         }
 
-        .vkid-button {
-            background: #0077FF !important;
+        .vkid-oauth-button {
             border-radius: 8px !important;
-            height: 44px !important;
         }
     </style>
 </head>
@@ -417,10 +412,7 @@
                 <div id="topic-form-container">
                     <div class="auth-required">
                         <p>Чтобы создавать темы, войдите через VK</p>
-                        <div id="vkid-container"></div>
-                        <p style="margin-top: 15px; font-size: 0.9em; color: #868e96;">
-                            Или <a href="#" onclick="simpleAuth(); return false;">войдите через имя</a>
-                        </p>
+                        <div id="vkid-oauth-container"></div>
                     </div>
                 </div>
 
@@ -438,68 +430,67 @@
     <script>
         const FORUM_DATA_KEY = 'petscd_forum_data_v2';
 
-        // Инициализация VK ID SDK
-        function initVKID() {
+        // Инициализация VK OAuthList
+        function initVKOAuth() {
             if ('VKIDSDK' in window) {
                 const VKID = window.VKIDSDK;
 
                 try {
                     VKID.Config.init({
-                        app: 54227853, // Ваш App ID
+                        app: 54227853,
                         redirectUrl: 'https://gazmannn0890-cyber.github.io/petsC-D/forum.html',
-                        state: 'forum_auth_' + Date.now(),
-                        scope: 'email'
+                        responseMode: VKID.ConfigResponseMode.Callback,
+                        source: VKID.ConfigSource.LOWCODE,
+                        scope: '',
                     });
 
-                    const oneTap = new VKID.OneTap();
+                    const oAuth = new VKID.OAuthList();
 
-                    oneTap.render({
-                        container: document.getElementById('vkid-container'),
-                        showAlternativeLogin: false,
-                        style: {
-                            height: 44,
-                            borderRadius: 8
-                        }
+                    oAuth.render({
+                        container: document.getElementById('vkid-oauth-container'),
+                        oauthList: ['vkid']
                     })
                     .on(VKID.WidgetEvents.ERROR, function(error) {
-                        console.error('VK ID Error:', error);
+                        console.error('VK OAuth Error:', error);
                         showMessage('Ошибка VK авторизации', 'error');
+                        // При ошибке показываем простую авторизацию
+                        setTimeout(showSimpleAuth, 2000);
                     })
-                    .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, function(payload) {
-                        console.log('VK ID Login Success:', payload);
+                    .on(VKID.OAuthListInternalEvents.LOGIN_SUCCESS, function(payload) {
+                        console.log('VK OAuth Login Success:', payload);
                         
                         const code = payload.code;
                         const deviceId = payload.device_id;
 
                         VKID.Auth.exchangeCode(code, deviceId)
                             .then(function(authData) {
-                                console.log('VK ID Auth Data:', authData);
-                                handleVKIDSuccess(authData);
+                                console.log('VK OAuth Auth Data:', authData);
+                                handleVKSuccess(authData);
                             })
                             .catch(function(error) {
-                                console.error('VK ID Exchange Error:', error);
+                                console.error('VK OAuth Exchange Error:', error);
                                 showMessage('Ошибка обмена кода', 'error');
                             });
                     });
 
                 } catch (error) {
-                    console.error('VK ID Init Error:', error);
-                    showMessage('Ошибка инициализации VK ID', 'error');
+                    console.error('VK OAuth Init Error:', error);
+                    showSimpleAuth();
                 }
             } else {
                 console.error('VKIDSDK not loaded');
-                showMessage('VK ID SDK не загружен', 'error');
+                showSimpleAuth();
             }
         }
 
-        // Обработка успешной авторизации VK ID
-        function handleVKIDSuccess(authData) {
+        // Обработка успешной авторизации VK
+        function handleVKSuccess(authData) {
             if (authData && authData.user) {
                 const user = authData.user;
                 
                 localStorage.setItem('is_authenticated', 'true');
                 localStorage.setItem('user_name', `${user.first_name} ${user.last_name}`);
-                localStorage.setItem('user_avatar', user.avatar || `https://via.placeholder.com/100/667eea/ffffff?text=${user.first_name.charAt(0)}`);
+                localStorage.setItem('user_avatar', user.avatar || `https://via.placeholder.com/100/0077FF/ffffff?text=${user.first_name.charAt(0)}`);
                 localStorage.setItem('vk_user_id', user.id);
                 localStorage.setItem('vk_token', authData.token);
                 
@@ -511,7 +502,20 @@
             }
         }
 
-        // Простая авторизация через имя (fallback)
+        // Простая авторизация как fallback
+        function showSimpleAuth() {
+            const authRequired = document.querySelector('.auth-required');
+            if (authRequired) {
+                authRequired.innerHTML = `
+                    <p>VK авторизация временно недоступна</p>
+                    <p>Используйте простой вход через имя:</p>
+                    <button class="btn" onclick="simpleAuth()" style="margin-top: 10px;">
+                        🚪 Войти через имя
+                    </button>
+                `;
+            }
+        }
+
         function simpleAuth() {
             const userName = prompt('Введите ваше имя для форума:');
             if (userName && userName.trim().length >= 2) {
@@ -526,8 +530,6 @@
                 loadTopics();
                 
                 showMessage(`Добро пожаловать, ${userName.trim()}! 🎉`, 'success');
-            } else if (userName) {
-                alert('Имя должно содержать минимум 2 символа');
             }
         }
 
@@ -586,10 +588,10 @@
                     </div>
                 `;
 
-                authButtons.innerHTML = '<button class="btn btn-vk" onclick="simpleAuth()">🚪 Войти через имя</button>';
+                authButtons.innerHTML = '<button class="btn" onclick="location.reload()">🔄 Обновить</button>';
                 
-                // Инициализируем VK ID кнопку
-                setTimeout(initVKID, 100);
+                // Инициализируем VK OAuth
+                setTimeout(initVKOAuth, 100);
             }
         }
 
@@ -626,7 +628,6 @@
                             description: "Это первая тема нашего форума. Здесь вы можете обсуждать всё, что связано с питомцами: уход, здоровье, питание, воспитание и многое другое. Создавайте свои темы и присоединяйтесь к обсуждениям!",
                             authorName: "Администратор",
                             authorAvatar: "https://via.placeholder.com/100/667eea/ffffff?text=Admin",
-                            authorVKId: "admin",
                             createdAt: new Date().toISOString(),
                             comments: [
                                 {
@@ -711,16 +712,6 @@
                 return;
             }
             
-            if (title.trim().length < 5) {
-                alert('Заголовок должен содержать минимум 5 символов');
-                return;
-            }
-            
-            if (description.trim().length < 10) {
-                alert('Описание должно содержать минимум 10 символов');
-                return;
-            }
-            
             const submitBtn = e.target.querySelector('button[type="submit"]');
             const originalText = submitBtn.textContent;
             submitBtn.textContent = 'Создаём тему...';
@@ -737,7 +728,7 @@
                     description: description.trim(),
                     authorName: localStorage.getItem('user_name'),
                     authorAvatar: localStorage.getItem('user_avatar'),
-                    authorVKId: localStorage.getItem('vk_user_id') || localStorage.getItem('user_id'),
+                    authorId: localStorage.getItem('vk_user_id') || localStorage.getItem('user_id'),
                     createdAt: new Date().toISOString(),
                     comments: []
                 };
@@ -771,7 +762,6 @@
             setTimeout(() => {
                 btn.textContent = originalText;
                 btn.disabled = false;
-                showMessage('Список тем обновлен!', 'success');
             }, 1000);
         }
 
