@@ -359,6 +359,15 @@
             margin-bottom: 20px;
             text-align: center;
         }
+
+        .error-message {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -412,8 +421,50 @@
     <script>
         // Конфигурация VK
         const VK_CLIENT_ID = '54227853';
-        const VK_REDIRECT_URI = window.location.origin + '/petsC-D/auth.html';
+        const VK_REDIRECT_URI = window.location.origin + '/petsC-D/forum.html';
         const FORUM_DATA_KEY = 'petscd_forum_data_v2';
+
+        // Обработка VK callback при загрузке страницы
+        function handleVKCallback() {
+            // Проверяем hash в URL (VK возвращает token в hash)
+            if (window.location.hash) {
+                const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                const accessToken = hashParams.get('access_token');
+                const userId = hashParams.get('user_id');
+                const expiresIn = hashParams.get('expires_in');
+
+                if (accessToken && userId) {
+                    console.log('VK Auth Success:', { accessToken, userId });
+                    
+                    // Убираем hash из URL чтобы не мешал
+                    window.history.replaceState(null, null, window.location.pathname + window.location.search);
+                    
+                    // Получаем информацию о пользователе
+                    fetch(`https://api.vk.com/method/users.get?user_ids=${userId}&fields=photo_100,first_name,last_name&v=5.131`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.response && data.response[0]) {
+                                const user = data.response[0];
+                                localStorage.setItem('is_authenticated', 'true');
+                                localStorage.setItem('user_name', `${user.first_name} ${user.last_name}`);
+                                localStorage.setItem('user_avatar', user.photo_100);
+                                localStorage.setItem('vk_user_id', userId);
+                                localStorage.setItem('vk_token', accessToken);
+                                
+                                checkAuth();
+                                loadTopics();
+                                showMessage(`Добро пожаловать, ${user.first_name}! 🎉`, 'success');
+                            } else {
+                                throw new Error('No user data in response');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('VK API Error:', error);
+                            showMessage('Ошибка получения данных пользователя', 'error');
+                        });
+                }
+            }
+        }
 
         // Проверка авторизации
         function checkAuth() {
@@ -479,6 +530,7 @@
         // Авторизация через VK
         function loginWithVK() {
             const vkAuthUrl = `https://oauth.vk.com/authorize?client_id=${VK_CLIENT_ID}&display=page&redirect_uri=${encodeURIComponent(VK_REDIRECT_URI)}&scope=offline&response_type=token&v=5.131`;
+            console.log('Redirecting to VK:', vkAuthUrl);
             window.location.href = vkAuthUrl;
         }
 
@@ -492,6 +544,7 @@
                 localStorage.removeItem('vk_user_id');
                 checkAuth();
                 loadTopics();
+                showMessage('Вы вышли из системы', 'info');
             }
         }
 
@@ -697,10 +750,7 @@
 
         function showMessage(message, type = 'info') {
             const messageDiv = document.createElement('div');
-            messageDiv.className = `welcome-message`;
-            messageDiv.style.background = type === 'success' 
-                ? 'linear-gradient(135deg, #28a745 0%, #20c997 100%)'
-                : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            messageDiv.className = type === 'error' ? 'error-message' : 'welcome-message';
             messageDiv.textContent = message;
             messageDiv.style.marginBottom = '20px';
             
@@ -709,7 +759,7 @@
             
             setTimeout(() => {
                 messageDiv.remove();
-            }, 3000);
+            }, 4000);
         }
 
         function showError(message) {
@@ -725,6 +775,10 @@
 
         // Инициализация
         document.addEventListener('DOMContentLoaded', function() {
+            // Сначала обрабатываем VK callback (если есть)
+            handleVKCallback();
+            
+            // Затем проверяем обычную авторизацию
             checkAuth();
             loadTopics();
             
